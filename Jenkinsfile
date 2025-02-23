@@ -20,6 +20,7 @@ pipeline {
 					image 'docker:dind'
 					args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
 				}
+			}
 			steps {
 				sh 'docker build -t sanzudock/nodejsgoof:0.1 .'
 				sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
@@ -31,8 +32,8 @@ pipeline {
 				docker {
 					image 'kroniak/ssh-client'
 					args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
-					}
 				}
+			}
 			steps {
 				withCredentials([sshUserPrivateKey(credentialsId: "DeploymentSSHkey", keyFileVariable:'keyfile')]) {
 					sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no ubuntu@192.168.1.3 "echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin"'

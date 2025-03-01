@@ -4,6 +4,22 @@ pipeline {
 		DOCKERHUB_CREDENTIALS = credentials('DockerLogin')
 	}
 	stages {
+		stage('Secret Scanning Using Trufflehog'){
+			agent {
+				docker {
+					image 'trufflesecurity/trufflehog:latest'
+					args '--entrypoint='
+				}
+			}
+
+			steps {
+				catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+					sh'trufflehog filesystem . --exclude-paths trufflehog-excluded-paths.txt --fail --json --no-update > trufflehog-scan-result.json'
+				}
+				sh 'cat trufflehog-scan-result.json'
+				archiveArtifacts artifacts: 'trufflehog-scan-result.json'
+			}
+		}
 		stage('Build') {
 			agent {
 				docker {
@@ -36,12 +52,12 @@ pipeline {
 			}
 			steps {
 				withCredentials([sshUserPrivateKey(credentialsId: "DeploymentSSHkey", keyFileVariable:'keyfile')]) {
-					sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no deployment@192.168.1.12 "echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin"'
-					sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no deployment@192.168.1.12 docker pull sanzudock/nodejsgoof:0.1'
-					sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no deployment@192.168.1.12 docker rm --force mongodb'
-					sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no deployment@192.168.1.12 docker run --detach --name mongodb -p 27017:27017 mongo:3'
-					sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no deployment@192.168.1.12 docker rm --force nodejsgoof'
-					sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no deployment@192.168.1.12 docker run -it --detach --name nodejsgoof --network host sanzudock/nodejsgoof:0.1'
+					sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no deployment@192.168.1.13 "echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin"'
+					sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no deployment@192.168.1.13 docker pull sanzudock/nodejsgoof:0.1'
+					sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no deployment@192.168.1.13 docker rm --force mongodb'
+					sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no deployment@192.168.1.13 docker run --detach --name mongodb -p 27017:27017 mongo:3'
+					sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no deployment@192.168.1.13 docker rm --force nodejsgoof'
+					sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no deployment@192.168.1.13 docker run -it --detach --name nodejsgoof --network host sanzudock/nodejsgoof:0.1'
 				}
 			
 			}
